@@ -22,7 +22,6 @@ class Dmol3ParserContext(object):
     def __init__(self):
         self.functionals                       = []
 
-
     def initialize_values(self):
         """Initializes the values of certain variables.
 
@@ -49,9 +48,20 @@ class Dmol3ParserContext(object):
 
 # Here we add info about the XC functional and relativistic treatment
     def onClose_section_method(self, backend, gIndex, section):
+        functional = section["dmol3_functional_name"]
+        if functional:
+            functionalMap = {
+                "gga": ["GGA_X_PW91","GGA_C_PW91"]
+            }
+            # Push the functional string into the backend
+            nomadNames = functionalMap.get(functional[0])
+            if not nomadNames:
+                raise Exception("Unhandled xc functional %s found" % functional)
+            for name in nomadNames:
+                s = backend.openSection("section_XC_functionals")
+                backend.addValue('XC_functional_name', name)
+                backend.closeSection("section_XC_functionals", s)
 
-        # Push the functional string into the backend
-        backend.addValue('XC_functional', self.functionals)
 
 
                 
@@ -76,22 +86,11 @@ def build_Dmol3MainFileSimpleMatcher():
    ########################################
     # submatcher for section method
     calculationMethodSubMatcher = SM(name = 'calculationMethods',
-        startReStr = r"\sFunctional\s*\:",
-        forwardMatch = True,
+        startReStr = r"\s*INPUT_DMOL keywords \(for archive\):",
         sections = ["section_method"],
         subMatchers = [
-
-           SM(name = "dmol3XC",
-              startReStr = r"\sFunctional\s*\:",
-              forwardMatch = True,
-              sections = ["dmol3_section_functionals"],
-              subMatchers = [
-
-                 SM(r"\sFunctional\s* *(?P<dmol3_functional_name> [A-Za-z0-9() ]*)")
-
-                             ]), # CLOSING dmol3_section_functionals
-
-                      ]) # CLOSING SM calculationMethods
+            SM(r"\s*Functional\s+(?P<dmol3_functional_name>[A-Za-z0-9()]+)")
+        ]) # CLOSING SM calculationMethods
 
 
     ########################################
@@ -103,7 +102,7 @@ def build_Dmol3MainFileSimpleMatcher():
         weak = True,
         subMatchers = [
         SM (name = 'NewRun',
-            startReStr = r"\s*Materials Studio DMol\^3 version 3.0",
+            startReStr = r"\s*Materials Studio DMol\^3 version [0-9.]",
             endReStr = r"\s*DMol3 job finished successfully",
             repeats = True,
             required = True,
@@ -113,11 +112,11 @@ def build_Dmol3MainFileSimpleMatcher():
 
 
                SM(name = 'ProgramHeader',
-                  startReStr = r"\s*Materials Studio DMol\^3 version 3.0",
+                  startReStr = r"\s*Materials Studio DMol\^3 version (?P<program_version>[0-9.]+)",
                   subMatchers = [
 #castap : on Fri, 19 Feb 2016 13:44:46 +0000
 #dmol3  : compiled on Nov 12 2003 20:18:37 
-                     SM(r"\s compiled on\s(?P<dmol3_program_compilation_date>[a-zA-Z,\s0-9]*)\s *(?P<dmol3_program_compilation_time>[0-9:]*)")
+                     SM(r"\s*compiled on\s+(?P<dmol3_program_compilation_date>[a-zA-Z]+\s+[0-9]+\s+[0-9]+)\s+(?P<dmol3_program_compilation_time>[0-9:]*)")
                                   ]), # CLOSING SM ProgramHeader
 
              calculationMethodSubMatcher  # section_method
