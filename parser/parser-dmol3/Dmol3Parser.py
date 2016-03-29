@@ -13,7 +13,7 @@ import logging, os, re, sys
 
 
 ############################################################
-###############(1) PARSER CONTEXT CLASS  ###################
+###############(1) transfer PARSER CONTEXT #################
 ############################################################
 logger = logging.getLogger("nomad.dmol3Parser") 
 
@@ -46,7 +46,34 @@ class Dmol3ParserContext(object):
         self.initialize_values()
 
 
-# Here we add info about the XC functional and relativistic treatment
+
+    ########################################
+    # (2.1) onClose for INPUT geometry(section_system_description)
+    def onClose_section_system_description(self, backend, gIndex, section):
+        """Trigger called when section_system_description is closed.
+        Writes atomic positions, atom labels and lattice vectors.
+        """
+        # keep track of the latest system description section
+        self.secSystemDescriptionIndex = gIndex
+
+        atom_pos = []
+        for i in ['x', 'y', 'z']:
+            api = section['dmol3_geometry_atom_position_' + i]
+            if api is not None:
+               atom_pos.append(api)
+        if atom_pos:
+            # need to transpose array since its shape is [number_of_atoms,3] in the metadata
+           backend.addArrayValues('atom_position', np.transpose(np.asarray(atom_pos)))
+            # write atom labels
+        atom_labels = section['dmol3_geometry_atom_label']
+        if atom_labels is not None:
+           backend.addArrayValues('atom_label', np.asarray(atom_labels))
+ 
+
+
+
+    ########################################
+    # (2.2) onClose for INPUT control (section_method)
     def onClose_section_method(self, backend, gIndex, section):
         functional = section["dmol3_functional_name"]
         if functional:
@@ -83,14 +110,84 @@ def build_Dmol3MainFileSimpleMatcher():
        SimpleMatcher that parses main file of dmol3. 
     """
 
-   ########################################
-    # submatcher for section method
+
+    ########################################
+    # (1) submatcher for header
+    headerSubMatcher = SM(name = 'ProgramHeader',
+                  startReStr = r"\s*Materials Studio DMol\^3 version (?P<program_version>[0-9.]+)",
+                  subMatchers = [
+                     SM(r"\s*compiled on\s+(?P<dmol3_program_compilation_date>[a-zA-Z]+\s+[0-9]+\s+[0-9]+)\s+(?P<dmol3_program_compilation_time>[0-9:]*)")
+                                  ])
+
+    ########################################
+    # (2.1) submatcher for INPUT geometry(section_system_description)
+    geometrySubMatcher = SM(name = 'Geometry',
+        startReStr = r"\s*INCOOR, atomic coordinates in au \(for archive\):",
+        sections = ['section_system_description'],
+        subMatchers = [
+       # SM (startReStr = r"\s*\|\s*Unit cell:",
+       #     subMatchers = [
+       #     SM (r"\s*\|\s*(?P<dmol3_geometry_lattice_vector_x__bohr>[-+0-9.]+)\s+(?P<dmol3_geometry_lattice_vector_y__bohr>[-+0-9.]+)\s+(?P<dmol3_geometry_lattice_vector_z__bohr>[-+0-9.]+)", repeats = True)
+       #     ]),
+        SM (startReStr = r"\s*\$coordinates",
+            subMatchers = [
+            SM (r"\s*(?P<dmol3_geometry_atom_label>[a-zA-Z]+)\s+(?P<dmol3_geometry_atom_position_x__bohr>[-+0-9.]+)\s+(?P<dmol3_geometry_atom_position_y__bohr>[-+0-9.]+)\s+(?P<dmol3_geometry_atom_position_z__bohr>[-+0-9.]+)", repeats = True)
+            ])
+        ])
+
+
+
+
+    ########################################
+    # (2.2) submatcher for INPUT control (section_method)
     calculationMethodSubMatcher = SM(name = 'calculationMethods',
         startReStr = r"\s*INPUT_DMOL keywords \(for archive\):",
+        endReStr = r"\s*\>8",
         sections = ["section_method"],
         subMatchers = [
-            SM(r"\s*Functional\s+(?P<dmol3_functional_name>[A-Za-z0-9()]+)")
-        ]) # CLOSING SM calculationMethods
+            SM(r"\s*Calculate\s+(?P<dmol3_calculation_type>[A-Za-z_]+)"),
+            SM(r"\s*Functional\s+(?P<dmol3_functional_name>[A-Za-z0-9]+)"),
+            SM(r"\s*Pseudopotential\s+(?P<dmol3_pseudopotential_name>[A-Za-z]+)"),
+            SM(r"\s*Basis\s+(?P<dmol3_basis_name>[A-Za-z]+)"),
+            SM(r"\s*Spin_Polarization\s+(?P<dmol3_spin_polarization>[A-Za-z]+)"),
+            SM(r"\s*Spin\s+(?P<dmol3_spin>[0-9]+)"),
+            SM(r"\s*Atom_Rcut\s+(?P<dmol3_rcut>[-+0-9.eEdD]+)"),
+            SM(r"\s*Integration_Grid\s+(?P<dmol3_integration_grid>[A-Za-z]+)"),
+            SM(r"\s*Aux_Partition\s+(?P<dmol3_aux_partition>[0-9]+)"),
+            SM(r"\s*Aux_Density\s+(?P<dmol3_aux_density>[A-Za-z]+)"),
+
+            SM(r"\s*Charge\s+(?P<dmol3_charge>[-+0-9.eEdD]+)"),
+            SM(r"\s*Symmetry\s+(?P<dmol3_symmetry>[A-Za-z0-9]+)"),
+            SM(r"\s*Mulliken_Analysis\s+(?P<dmol3_mulliken_analysis>[A-Za-z]+)"),
+            SM(r"\s*Hirshfeld_Analysis\s+(?P<dmol3_hirshfeld_analysis>[A-Za-z]+)"),
+            SM(r"\s*Partial_Dos\s+(?P<dmol3_partial_dos>[A-Za-z]+)"),
+            SM(r"\s*Electrostatic_Moments\s+(?P<dmol3_electrostatic_moments>[A-Za-z]+)"),
+            SM(r"\s*Nuclear_EFG\s+(?P<dmol3_nuclear_efg>[A-Za-z]+)"),
+            SM(r"\s*Optical_Absorption\s+(?P<dmol3_optical_absorption>[A-Za-z]+)"),
+            SM(r"\s*Kpoints\s+(?P<dmol3_kpoints>[A-Za-z]+)"),
+
+            SM(r"\s*SCF_Density_Convergence\s+(?P<dmol3_scf_density_convergence>[-+0-9.eEdD]+)"),
+            SM(r"\s*SCF_Spin_Mixing\s+(?P<dmol3_scf_spin_mixing>[-+0-9.eEdD]+)"),
+            SM(r"\s*SCF_Charge_Mixing\s+(?P<dmol3_scf_charge_mixing>[-+0-9.eEdD]+)"),
+            SM(r"\s*SCF_DIIS\s+(?P<dmol3_scf_diis_number>[-+0-9.eEdD]+)\s+(?P<dmol3_scf_diis_name>[A-Za-z]+)"),
+            SM(r"\s*SCF_Iterations\s+(?P<dmol3_scf_iterations>[0-9]+)"),
+            SM(r"\s*SCF_Number_Bad_Steps\s+(?P<dmol3_scf_number_bad_steps>[0-9]+)"),
+            SM(r"\s*SCF_Direct\s+(?P<dmol3_scf_direct>[A-Za-z]+)"),
+            SM(r"\s*SCF_Restart\s+(?P<dmol3_scf_restart>[A-Za-z]+)"),
+            SM(r"\s*Occupation\s+(?P<dmol3_occupation_name>[A-Za-z_]+)\s+(?P<dmol3_occupation_width>[0-9.eEdD]+)"),
+
+            SM(r"\s*OPT_Energy_Convergence\s+(?P<dmol3_opt_energy_convergence>[-+0-9.eEdD]+)"),
+            SM(r"\s*OPT_Gradient_Convergence\s+(?P<dmol3_opt_gradient_convergence>[-+0-9.eEdD]+)"),
+            SM(r"\s*OPT_Displacement_Convergence\s+(?P<dmol3_opt_displacement_convergence>[-+0-9.eEdD]+)"),
+            SM(r"\s*OPT_Iterations\s+(?P<dmol3_opt_iterations>[0-9]+)"),
+            SM(r"\s*OPT_Coordinate_System\s+(?P<dmol3_opt_coordinate_system>[A-Za-z_]+)"),
+            SM(r"\s*OPT_Gdiis\s+(?P<dmol3_opt_gdiis>[A-Za-z]+)"),
+            SM(r"\s*OPT_Max_Displacement\s+(?P<dmol3_opt_max_displacement>[-+0-9.eEdD]+)"),
+            SM(r"\s*OPT_Steep_Tol\s+(?P<dmol3_opt_steep_tol>[-+0-9.eEdD]+)"),
+            SM(r"\s*OPT_Hessian_Project\s+(?P<dmol3_opt_hessian_project>[A-Za-z]+)")
+
+
+        ]) 
 
 
     ########################################
@@ -110,17 +207,18 @@ def build_Dmol3MainFileSimpleMatcher():
             sections = ['section_run'],
             subMatchers = [
 
+             #-----------(1) header--------------------- 
+             headerSubMatcher,
 
-               SM(name = 'ProgramHeader',
-                  startReStr = r"\s*Materials Studio DMol\^3 version (?P<program_version>[0-9.]+)",
-                  subMatchers = [
-#castap : on Fri, 19 Feb 2016 13:44:46 +0000
-#dmol3  : compiled on Nov 12 2003 20:18:37 
-                     SM(r"\s*compiled on\s+(?P<dmol3_program_compilation_date>[a-zA-Z]+\s+[0-9]+\s+[0-9]+)\s+(?P<dmol3_program_compilation_time>[0-9:]*)")
-                                  ]), # CLOSING SM ProgramHeader
+             #----------(2.1) INPUT : geometry----------
+             geometrySubMatcher,  
 
-             calculationMethodSubMatcher  # section_method
+             #----------(2.2) INPUT : control-----------
+             calculationMethodSubMatcher  
           
+             #----------(3) OUTPUT----------------------
+             #calculationOutputSubMatcher 
+
            ]) # CLOSING SM NewRun  
 
         ]) # END Root
