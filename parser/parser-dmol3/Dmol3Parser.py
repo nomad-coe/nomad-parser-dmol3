@@ -13,7 +13,7 @@ import logging, os, re, sys
 
 
 ############################################################
-###############(1) transfer PARSER CONTEXT #################
+###############[1] transfer PARSER CONTEXT #################
 ############################################################
 logger = logging.getLogger("nomad.dmol3Parser") 
 
@@ -47,8 +47,9 @@ class Dmol3ParserContext(object):
 
 
 
-    ########################################
-    # (2.1) onClose for INPUT geometry(section_system_description)
+    ###################################################################
+    # (2.1) onClose for INPUT geometry (section_system_description)
+    ###################################################################
     def onClose_section_system_description(self, backend, gIndex, section):
         """Trigger called when section_system_description is closed.
         Writes atomic positions, atom labels and lattice vectors.
@@ -69,11 +70,14 @@ class Dmol3ParserContext(object):
         if atom_labels is not None:
            backend.addArrayValues('atom_label', np.asarray(atom_labels))
  
+        #atom_hirshfeld_population_analysis = section['dmol3_hirshfeld_population']        
+        #if atom_hirshfeld_population_analysis is not None:
+        #   backend.addArrayValues('atom_hirshfeld_population',np.asarray(atom_hirshfeld_population_analysis))
+        ###---???shanghui want to know how to add 
 
-
-
-    ########################################
+    #################################################################
     # (2.2) onClose for INPUT control (section_method)
+    #################################################################
     def onClose_section_method(self, backend, gIndex, section):
         functional = section["dmol3_functional_name"]
         if functional:
@@ -90,12 +94,62 @@ class Dmol3ParserContext(object):
                 backend.closeSection("section_XC_functionals", s)
 
 
+    #################################################################
+    # (3.1) onClose for OUTPUT SCF (section_scf_iteration) 
+    #################################################################
+    # Storing the total energy of each SCF iteration in an array
+    def onClose_section_scf_iteration(self, backend, gIndex, section):
+        """trigger called when _section_scf_iteration is closed"""
+        # get cached values for energy_total_scf_iteration
+        ev = section['energy_total_scf_iteration']
+        self.scfIterNr = len(ev)
+
+        #self.energy_total_scf_iteration_list.append(ev)
+        #backend.addArrayValues('energy_total_scf_iteration_list', np.asarray(ev))
+        #backend.addValue('scf_dft_number_of_iterations', self.scfIterNr)
+        #-----???shanghui want to know why can not add them.
+ 
+
+    #################################################################
+    # (3.2) onClose for OUTPUT eigenvalues (section_eigenvalues) 
+    #################################################################
+    def onClose_section_eigenvalues(self, backend, gIndex, section):
+        """Trigger called when _section_eigenvalues is closed.
+        Eigenvalues are extracted.
+        """
+        occs = []
+        evs =  []
+
+        ev = section['dmol3_eigenvalue_eigenvalue']
+        if ev is not None: 
+           occ = section['dmol3_eigenvalue_occupation']
+           occs.append(occ) 
+           evs.append(ev)
+
+        self.eigenvalues_occupation = []
+        self.eigenvalues_eigenvalues = []
+
+        #self.eigenvalues_kpoints = [] 
+        self.eigenvalues_occupation.append(occs)
+        self.eigenvalues_eigenvalues.append(evs)
+
 
                 
-
+    #################################################################
+    # (3.3) onClose for OUTPUT totalenergy (section_total_energy) 
+    #################################################################
+    #def onClose_section_total_energy(self, backend, gIndex, section):
+    #    """Trigger called when _section_total_energy is closed.
+    #    Eigenvalues are extracted.
+    #    """
+    #    self.totalenergy = []
+    #
+    #    et = section['dmol3_total_energy']
+    #    if et is not None: 
+    #       self.totalenergy.append(et)
 
 #############################################################
-#################(2) MAIN PARSER STARTS HERE  ###############
+#################[2] MAIN PARSER STARTS HERE  ###############
 #############################################################
 
 def build_Dmol3MainFileSimpleMatcher():
@@ -111,16 +165,18 @@ def build_Dmol3MainFileSimpleMatcher():
     """
 
 
-    ########################################
+    #####################################################################
     # (1) submatcher for header
+    #####################################################################
     headerSubMatcher = SM(name = 'ProgramHeader',
                   startReStr = r"\s*Materials Studio DMol\^3 version (?P<program_version>[0-9.]+)",
                   subMatchers = [
                      SM(r"\s*compiled on\s+(?P<dmol3_program_compilation_date>[a-zA-Z]+\s+[0-9]+\s+[0-9]+)\s+(?P<dmol3_program_compilation_time>[0-9:]*)")
                                   ])
 
-    ########################################
+    #####################################################################
     # (2.1) submatcher for INPUT geometry(section_system_description)
+    #####################################################################
     geometrySubMatcher = SM(name = 'Geometry',
         startReStr = r"\s*INCOOR, atomic coordinates in au \(for archive\):",
         sections = ['section_system_description'],
@@ -138,8 +194,9 @@ def build_Dmol3MainFileSimpleMatcher():
 
 
 
-    ########################################
+    ####################################################################
     # (2.2) submatcher for INPUT control (section_method)
+    ####################################################################
     calculationMethodSubMatcher = SM(name = 'calculationMethods',
         startReStr = r"\s*INPUT_DMOL keywords \(for archive\):",
         endReStr = r"\s*\>8",
@@ -189,9 +246,75 @@ def build_Dmol3MainFileSimpleMatcher():
 
         ]) 
 
+    ####################################################################
+    # (3.1) submatcher for OUPUT SCF
+    ####################################################################
+    scfSubMatcher = SM(name = 'ScfIterations',
+        startReStr = r"\s*Message: Start SCF iterations\s*",
+        endReStr = r"\s*Message: SCF converged\s*",
+        sections = ['section_scf_iteration'],
+        subMatchers = [
+            SM(r"\s*Ef\s+(?P<energy_total_scf_iteration__hartree>[-+0-9.eEdD]+)\s+(?P<dmol3_binding_energy_scf_iteration__hartree>[-+0-9.eEdD]+)\s+(?P<dmol3_convergence_scf_iteration>[-+0-9.eEdD]+)\s+(?P<dmol3_time_scf_iteration>[0-9.eEdD]+)\s+(?P<dmol3_number_scf_iteration>[0-9]+)\s*", repeats = True)
+
+        ]) 
+      
+    ####################################################################
+    # (3.2) submatcher for OUPUT eigenvalues
+    ####################################################################
+    eigenvalueSubMatcher = SM(name = 'Eigenvalues',
+        startReStr = r"\s*state\s+eigenvalue\s+occupation\s*",
+        sections = ['section_eigenvalues'],
+        subMatchers = [
+            SM(r"\s*[0-9]+\s+[+-]\s+[0-9]+\s+[A-Za-z]+\s+[-+0-9.eEdD]+\s+(?P<dmol3_eigenvalue_eigenvalue__eV>[-+0-9.eEdD]+)\s+(?P<dmol3_eigenvalue_occupation>[0-9.eEdD]+)", repeats = True)
+        ]) 
+
+
+    ####################################################################
+    # (3.3) submatcher for OUPUT totalenergy
+    ####################################################################
+    #totalenergySubMatcher = SM(name = 'Totalenergy',
+    #    startReStr = r"\s*Cycle\s+Total\s*Energy\s+Energy\s*change\s+Max\s*Gradient\s+Max\s*Displacement",
+    #    sections = ['section_scf_iteration'],
+    #    subMatchers = [
+    #        SM(r"\s*opt==\s+[0-9]+\s+(?P<dmol3_total_energy__hartree>[-+0-9.eEdD]+)\s+[-+0-9.eEdD]+\s+[-+0-9.eEdD]+\s+[-+0-9.eEdD]+", repeats = True)
+    #    ]) 
+    
+
+    #####################################################################
+    # (3.4) submatcher for OUTPUT relaxation_geometry(section_system_description)
+    #####################################################################
+    geometryrelaxationSubMatcher = SM(name = 'GeometryRelaxation',
+        startReStr = r"\s*Input Coordinates \(Angstroms\)",
+        sections = ['section_system_description'],
+        subMatchers = [
+        SM (startReStr = r"\s*ATOM\s+X\s+Y\s+Z",
+            subMatchers = [
+            SM (r"\s*[0-9]+\s+(?P<dmol3_geometry_atom_label>[a-zA-Z]+)\s+(?P<dmol3_geometry_atom_position_x__angstrom>[-+0-9.]+)\s+(?P<dmol3_geometry_atom_position_y__angstrom>[-+0-9.]+)\s+(?P<dmol3_geometry_atom_position_z__angstrom>[-+0-9.]+)", repeats = True)
+            ])
+        ])
+
+
+    #####################################################################
+    # (3.5) submatcher for OUTPUT population analysis (section_system_description)
+    #####################################################################
+    populationSubMatcher = SM(name = 'PopulationAnalysis',
+        startReStr = r"\s*\+\+\+\s+Entering Properties Section\s+\+\+\+",
+        sections = ['section_system_description'],
+        subMatchers = [
+        SM (startReStr = r"\s*Charge partitioning by Hirshfeld method:",
+            subMatchers = [
+            SM (r"\s*[a-zA-Z]+\s+[0-9]+\s+charge\s+(?P<dmol3_hirshfeld_population>[-+0-9.]+)", repeats = True)
+            ]),
+        SM (startReStr = r"\s*Mulliken atomic charges:",
+            subMatchers = [
+            SM (r"\s*[a-zA-Z(]+\s+[0-9)]+\s+charge\s+(?P<dmol3_mulliken_population>[-+0-9.]+)", repeats = True)
+            ])
+        ])
+
 
     ########################################
     # return main Parser
+    ########################################
     return SM (name = 'Root',
 
         startReStr = "",
@@ -210,14 +333,24 @@ def build_Dmol3MainFileSimpleMatcher():
              #-----------(1) header--------------------- 
              headerSubMatcher,
 
+
              #----------(2.1) INPUT : geometry----------
              geometrySubMatcher,  
-
              #----------(2.2) INPUT : control-----------
-             calculationMethodSubMatcher  
+             calculationMethodSubMatcher,  
+
           
-             #----------(3) OUTPUT----------------------
-             #calculationOutputSubMatcher 
+             #----------(3.1) OUTPUT : SCF----------------------
+             scfSubMatcher,
+             #----------(3.2) OUTPUT : eigenvalues--------------
+             eigenvalueSubMatcher,
+             #----------(3.3) OUTPUT : totalenergy--------------
+             #totalenergySubMatcher        ###---???shanghui find not section_total_energy is defined. 
+             #----------(3.4) OUTPUT : relaxation_geometry----------------------
+             #geometryrelaxationSubMatcher ###---???shanghui find this will mismacth.
+             #----------(3.5) OUTPUT : population_analysis----------------------
+             populationSubMatcher
+             #----------(3.6) OUTPUT : frequencies----------------------
 
            ]) # CLOSING SM NewRun  
 
