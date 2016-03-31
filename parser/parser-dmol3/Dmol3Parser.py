@@ -94,20 +94,20 @@ class Dmol3ParserContext(object):
                 backend.closeSection("section_XC_functionals", s)
 
 
-    #################################################################
-    # (3.1) onClose for OUTPUT SCF (section_scf_iteration) 
-    #################################################################
-    # Storing the total energy of each SCF iteration in an array
-    def onClose_section_scf_iteration(self, backend, gIndex, section):
-        """trigger called when _section_scf_iteration is closed"""
-        # get cached values for energy_total_scf_iteration
-        ev = section['energy_total_scf_iteration']
-        self.scfIterNr = len(ev)
-
-        #self.energy_total_scf_iteration_list.append(ev)
-        #backend.addArrayValues('energy_total_scf_iteration_list', np.asarray(ev))
-        #backend.addValue('scf_dft_number_of_iterations', self.scfIterNr)
-        #-----???shanghui want to know why can not add them.
+    # #################################################################
+    # # (3.1) onClose for OUTPUT SCF (section_scf_iteration) 
+    # #################################################################
+    # # Storing the total energy of each SCF iteration in an array
+    # def onClose_section_scf_iteration(self, backend, gIndex, section):
+    #     """trigger called when _section_scf_iteration is closed"""
+    #     # get cached values for energy_total_scf_iteration
+    #     ev = section['energy_total_scf_iteration']
+    #     self.scfIterNr = len(ev)
+    # 
+    #     #self.energy_total_scf_iteration_list.append(ev)
+    #     #backend.addArrayValues('energy_total_scf_iteration_list', np.asarray(ev))
+    #     #backend.addValue('scf_dft_number_of_iterations', self.scfIterNr)
+    #     #-----???shanghui want to know why can not add them.
  
 
     #################################################################
@@ -252,9 +252,10 @@ def build_Dmol3MainFileSimpleMatcher():
     scfSubMatcher = SM(name = 'ScfIterations',
         startReStr = r"\s*Message: Start SCF iterations\s*",
         endReStr = r"\s*Message: SCF converged\s*",
-        sections = ['section_scf_iteration'],
         subMatchers = [
-            SM(r"\s*Ef\s+(?P<energy_total_scf_iteration__hartree>[-+0-9.eEdD]+)\s+(?P<dmol3_binding_energy_scf_iteration__hartree>[-+0-9.eEdD]+)\s+(?P<dmol3_convergence_scf_iteration>[-+0-9.eEdD]+)\s+(?P<dmol3_time_scf_iteration>[0-9.eEdD]+)\s+(?P<dmol3_number_scf_iteration>[0-9]+)\s*", repeats = True)
+            SM(r"\s*Ef\s+(?P<energy_total_scf_iteration__hartree>[-+0-9.eEdD]+)\s+(?P<dmol3_binding_energy_scf_iteration__hartree>[-+0-9.eEdD]+)\s+(?P<dmol3_convergence_scf_iteration>[-+0-9.eEdD]+)\s+(?P<dmol3_time_scf_iteration>[0-9.eEdD]+)\s+(?P<dmol3_number_scf_iteration>[0-9]+)\s*",
+               sections = ['section_scf_iteration'],
+               repeats = True)
 
         ]) 
       
@@ -299,16 +300,16 @@ def build_Dmol3MainFileSimpleMatcher():
     #####################################################################
     populationSubMatcher = SM(name = 'PopulationAnalysis',
         startReStr = r"\s*\+\+\+\s+Entering Properties Section\s+\+\+\+",
-        sections = ['section_system_description'],
         subMatchers = [
         SM (startReStr = r"\s*Charge partitioning by Hirshfeld method:",
+            sections = [ "dmol3_section_hirshfeld_population"],
             subMatchers = [
             SM (r"\s*[a-zA-Z]+\s+[0-9]+\s+charge\s+(?P<dmol3_hirshfeld_population>[-+0-9.]+)", repeats = True)
-            ]),
-        SM (startReStr = r"\s*Mulliken atomic charges:",
-            subMatchers = [
-            SM (r"\s*[a-zA-Z(]+\s+[0-9)]+\s+charge\s+(?P<dmol3_mulliken_population>[-+0-9.]+)", repeats = True)
-            ])
+            ])#,
+        #SM (startReStr = r"\s*Mulliken atomic charges:",
+        #    subMatchers = [
+        #    SM (r"\s*[a-zA-Z(]+\s+[0-9)]+\s+charge\s+(?P<dmol3_mulliken_population>[-+0-9.]+)", repeats = True)
+        #    ])
         ])
 
 
@@ -339,18 +340,24 @@ def build_Dmol3MainFileSimpleMatcher():
              #----------(2.2) INPUT : control-----------
              calculationMethodSubMatcher,  
 
-          
-             #----------(3.1) OUTPUT : SCF----------------------
-             scfSubMatcher,
-             #----------(3.2) OUTPUT : eigenvalues--------------
-             eigenvalueSubMatcher,
-             #----------(3.3) OUTPUT : totalenergy--------------
-             #totalenergySubMatcher        ###---???shanghui find not section_total_energy is defined. 
-             #----------(3.4) OUTPUT : relaxation_geometry----------------------
-             #geometryrelaxationSubMatcher ###---???shanghui find this will mismacth.
-             #----------(3.5) OUTPUT : population_analysis----------------------
-             populationSubMatcher
-             #----------(3.6) OUTPUT : frequencies----------------------
+             SM(name = "single configuration matcher",
+                startReStr = r"\s*~~~~~~~~*\s*Start Computing SCF Energy/Gradient\s*~~~~~~~~~~*",
+                repeats = True,
+                subMatchers = [
+                    #----------(3.1) OUTPUT : SCF----------------------
+                    scfSubMatcher,
+                    #----------(3.2) OUTPUT : eigenvalues--------------
+                    eigenvalueSubMatcher,
+                    #----------(3.3) OUTPUT : totalenergy--------------
+                    #totalenergySubMatcher        ###---???shanghui find not section_total_energy is defined.
+
+                    #----------(3.4) OUTPUT : relaxation_geometry----------------------
+                    #geometryrelaxationSubMatcher ###---???shanghui find this will mismacth.
+                    #----------(3.5) OUTPUT : population_analysis----------------------
+                    populationSubMatcher
+                    #----------(3.6) OUTPUT : frequencies----------------------
+                    ]
+            ),
 
            ]) # CLOSING SM NewRun  
 
