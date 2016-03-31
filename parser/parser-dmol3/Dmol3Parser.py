@@ -135,18 +135,6 @@ class Dmol3ParserContext(object):
 
 
                 
-    #################################################################
-    # (3.3) onClose for OUTPUT totalenergy (section_total_energy) 
-    #################################################################
-    #def onClose_section_total_energy(self, backend, gIndex, section):
-    #    """Trigger called when _section_total_energy is closed.
-    #    Eigenvalues are extracted.
-    #    """
-    #    self.totalenergy = []
-    #
-    #    et = section['dmol3_total_energy']
-    #    if et is not None: 
-    #       self.totalenergy.append(et)
 
 #############################################################
 #################[2] MAIN PARSER STARTS HERE  ###############
@@ -273,24 +261,24 @@ def build_Dmol3MainFileSimpleMatcher():
     ####################################################################
     # (3.3) submatcher for OUPUT totalenergy
     ####################################################################
-    #totalenergySubMatcher = SM(name = 'Totalenergy',
-    #    startReStr = r"\s*Cycle\s+Total\s*Energy\s+Energy\s*change\s+Max\s*Gradient\s+Max\s*Displacement",
-    #    sections = ['section_scf_iteration'],
-    #    subMatchers = [
-    #        SM(r"\s*opt==\s+[0-9]+\s+(?P<dmol3_total_energy__hartree>[-+0-9.eEdD]+)\s+[-+0-9.eEdD]+\s+[-+0-9.eEdD]+\s+[-+0-9.eEdD]+", repeats = True)
-    #    ]) 
+    totalenergySubMatcher = SM(name = 'Totalenergy',
+        startReStr = r"\s*Optimization Cycle",
+        subMatchers = [
+            SM(r"\s*opt==\s+[0-9]+\s+(?P<energy_total__hartree>[-+0-9.eEdD]+)\s+[-+0-9.eEdD]+\s+[-+0-9.eEdD]+\s+[-+0-9.eEdD]+", repeats = True)
+        ]) 
     
 
     #####################################################################
     # (3.4) submatcher for OUTPUT relaxation_geometry(section_system_description)
     #####################################################################
     geometryrelaxationSubMatcher = SM(name = 'GeometryRelaxation',
-        startReStr = r"\s*Input Coordinates \(Angstroms\)",
+        startReStr = r"\s*df\s*ATOMIC\s*COORDINATES\s*\(au\)\s*DERIVATIVES\s*\(au\)",
+        #endReStr = r"\s*\+\+\+\s+Entering Vibrations Section\s+\+\+\+ ",
         sections = ['section_system_description'],
         subMatchers = [
-        SM (startReStr = r"\s*ATOM\s+X\s+Y\s+Z",
+        SM (startReStr = r"\s*df\s+x\s+y\s+z\s+x\s+y\s+z",
             subMatchers = [
-            SM (r"\s*[0-9]+\s+(?P<dmol3_geometry_atom_label>[a-zA-Z]+)\s+(?P<dmol3_geometry_atom_position_x__angstrom>[-+0-9.]+)\s+(?P<dmol3_geometry_atom_position_y__angstrom>[-+0-9.]+)\s+(?P<dmol3_geometry_atom_position_z__angstrom>[-+0-9.]+)", repeats = True)
+            SM (r"\s*df\s+(?P<dmol3_geometry_atom_label>[a-zA-Z]+)\s+(?P<dmol3_geometry_atom_position_x__angstrom>[-+0-9.]+)\s+(?P<dmol3_geometry_atom_position_y__angstrom>[-+0-9.]+)\s+(?P<dmol3_geometry_atom_position_z__angstrom>[-+0-9.]+)\s+[-+0-9.]+\s+[-+0-9.]+\s+[-+0-9.]+", repeats = True)
             ])
         ])
 
@@ -305,11 +293,12 @@ def build_Dmol3MainFileSimpleMatcher():
             sections = [ "dmol3_section_hirshfeld_population"],
             subMatchers = [
             SM (r"\s*[a-zA-Z]+\s+[0-9]+\s+charge\s+(?P<dmol3_hirshfeld_population>[-+0-9.]+)", repeats = True)
-            ])#,
-        #SM (startReStr = r"\s*Mulliken atomic charges:",
-        #    subMatchers = [
-        #    SM (r"\s*[a-zA-Z(]+\s+[0-9)]+\s+charge\s+(?P<dmol3_mulliken_population>[-+0-9.]+)", repeats = True)
-        #    ])
+            ]),
+        SM (startReStr = r"\s*Mulliken atomic charges:",
+            sections = [ "dmol3_section_mulliken_population"],
+            subMatchers = [
+            SM (r"\s*[a-zA-Z(]+\s+[0-9)]+\s+(?P<dmol3_mulliken_population>[-+0-9.]+)", repeats = True)
+            ])
         ])
 
 
@@ -342,22 +331,26 @@ def build_Dmol3MainFileSimpleMatcher():
 
              SM(name = "single configuration matcher",
                 startReStr = r"\s*~~~~~~~~*\s*Start Computing SCF Energy/Gradient\s*~~~~~~~~~~*",
+                #endReStr = r"\s*~~~~~~~~*\s*End Computing SCF Energy/Gradient\s*~~~~~~~~~~*",
                 repeats = True,
-                subMatchers = [
+                 sections = ['section_single_configuration_calculation'],
+                 subMatchers = [
                     #----------(3.1) OUTPUT : SCF----------------------
                     scfSubMatcher,
                     #----------(3.2) OUTPUT : eigenvalues--------------
                     eigenvalueSubMatcher,
-                    #----------(3.3) OUTPUT : totalenergy--------------
-                    #totalenergySubMatcher        ###---???shanghui find not section_total_energy is defined.
-
                     #----------(3.4) OUTPUT : relaxation_geometry----------------------
-                    #geometryrelaxationSubMatcher ###---???shanghui find this will mismacth.
+                    geometryrelaxationSubMatcher, 
+                    ###---???shanghui find this will mismacth the frequencies geometry.
+                    #----------(3.3) OUTPUT : totalenergy--------------
+                    totalenergySubMatcher,       
                     #----------(3.5) OUTPUT : population_analysis----------------------
                     populationSubMatcher
-                    #----------(3.6) OUTPUT : frequencies----------------------
                     ]
-            ),
+                ),
+
+
+                    #----------(3.6) OUTPUT : frequencies----------------------
 
            ]) # CLOSING SM NewRun  
 
