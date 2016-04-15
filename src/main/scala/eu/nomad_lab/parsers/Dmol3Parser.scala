@@ -28,6 +28,7 @@ object Dmol3Parser extends SimpleExternalParserGenerator(
     "parser-dmol3/Dmol3Parser.py",
     "parser-dmol3/Dmol3Common.py",
     "parser-dmol3/setup_paths.py",
+    "nomad_meta_info/public.nomadmetainfo.json",
     "nomad_meta_info/common.nomadmetainfo.json",
     "nomad_meta_info/meta_types.nomadmetainfo.json",
     "nomad_meta_info/dmol3.nomadmetainfo.json"
