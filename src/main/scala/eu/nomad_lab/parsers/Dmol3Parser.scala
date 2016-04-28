@@ -11,7 +11,9 @@ object Dmol3Parser extends SimpleExternalParserGenerator(
     ("name" -> jn.JString("Dmol3Parser")) ::
       ("parserId" -> jn.JString("Dmol3Parser" + lab.Dmol3VersionInfo.version)) ::
       ("versionInfo" -> jn.JObject(
-        ("nomadCoreVersion" -> jn.JString(lab.NomadCoreVersionInfo.version)) ::
+        ("nomadCoreVersion" -> jn.JObject(lab.NomadCoreVersionInfo.toMap.map {
+          case (k, v) => k -> jn.JString(v.toString)
+        }(breakOut): List[(String, jn.JString)])) ::
           (lab.Dmol3VersionInfo.toMap.map {
             case (key, value) =>
               (key -> jn.JString(value.toString))
