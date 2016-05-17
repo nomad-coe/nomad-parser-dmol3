@@ -48,10 +48,10 @@ class Dmol3ParserContext(object):
 
 
     ###################################################################
-    # (2.1) onClose for INPUT geometry (section_system_description)
+    # (2.1) onClose for INPUT geometry (section_system)
     ###################################################################
-    def onClose_section_system_description(self, backend, gIndex, section):
-        """Trigger called when section_system_description is closed.
+    def onClose_section_system(self, backend, gIndex, section):
+        """Trigger called when section_system is closed.
         Writes atomic positions, atom labels and lattice vectors.
         """
         # keep track of the latest system description section
@@ -163,11 +163,11 @@ def build_Dmol3MainFileSimpleMatcher():
                                   ])
 
     #####################################################################
-    # (2.1) submatcher for INPUT geometry(section_system_description)
+    # (2.1) submatcher for INPUT geometry(section_system)
     #####################################################################
     geometrySubMatcher = SM(name = 'Geometry',
         startReStr = r"\s*INCOOR, atomic coordinates in au \(for archive\):",
-        sections = ['section_system_description'],
+        sections = ['section_system'],
         subMatchers = [
        # SM (startReStr = r"\s*\|\s*Unit cell:",
        #     subMatchers = [
@@ -269,12 +269,12 @@ def build_Dmol3MainFileSimpleMatcher():
     
 
     #####################################################################
-    # (3.4) submatcher for OUTPUT relaxation_geometry(section_system_description)
+    # (3.4) submatcher for OUTPUT relaxation_geometry(section_system)
     #####################################################################
     geometryrelaxationSubMatcher = SM(name = 'GeometryRelaxation',
         startReStr = r"\s*df\s*ATOMIC\s*COORDINATES\s*\(au\)\s*DERIVATIVES\s*\(au\)",
         #endReStr = r"\s*\+\+\+\s+Entering Vibrations Section\s+\+\+\+ ",
-        sections = ['section_system_description'],
+        sections = ['section_system'],
         subMatchers = [
         SM (startReStr = r"\s*df\s+x\s+y\s+z\s+x\s+y\s+z",
             subMatchers = [
@@ -284,7 +284,7 @@ def build_Dmol3MainFileSimpleMatcher():
 
 
     #####################################################################
-    # (3.5) submatcher for OUTPUT population analysis (section_system_description)
+    # (3.5) submatcher for OUTPUT population analysis (section_system)
     #####################################################################
     populationSubMatcher = SM(name = 'PopulationAnalysis',
         startReStr = r"\s*\+\+\+\s+Entering Properties Section\s+\+\+\+",
