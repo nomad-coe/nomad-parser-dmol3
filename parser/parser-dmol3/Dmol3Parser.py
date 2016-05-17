@@ -59,16 +59,16 @@ class Dmol3ParserContext(object):
 
         atom_pos = []
         for i in ['x', 'y', 'z']:
-            api = section['dmol3_geometry_atom_position_' + i]
+            api = section['dmol3_geometry_atom_positions_' + i]
             if api is not None:
                atom_pos.append(api)
         if atom_pos:
             # need to transpose array since its shape is [number_of_atoms,3] in the metadata
-           backend.addArrayValues('atom_position', np.transpose(np.asarray(atom_pos)))
+           backend.addArrayValues('atom_positions', np.transpose(np.asarray(atom_pos)))
             # write atom labels
-        atom_labels = section['dmol3_geometry_atom_label']
+        atom_labels = section['dmol3_geometry_atom_labels']
         if atom_labels is not None:
-           backend.addArrayValues('atom_label', np.asarray(atom_labels))
+           backend.addArrayValues('atom_labels', np.asarray(atom_labels))
  
         #atom_hirshfeld_population_analysis = section['dmol3_hirshfeld_population']        
         #if atom_hirshfeld_population_analysis is not None:
@@ -106,7 +106,7 @@ class Dmol3ParserContext(object):
     # 
     #     #self.energy_total_scf_iteration_list.append(ev)
     #     #backend.addArrayValues('energy_total_scf_iteration_list', np.asarray(ev))
-    #     #backend.addValue('scf_dft_number_of_iterations', self.scfIterNr)
+    #     #backend.addValue('number_of_scf_iterations', self.scfIterNr)
     #     #-----???shanghui want to know why can not add them.
  
 
@@ -127,11 +127,11 @@ class Dmol3ParserContext(object):
            evs.append(ev)
 
         self.eigenvalues_occupation = []
-        self.eigenvalues_eigenvalues = []
+        self.eigenvalues_values = []
 
         #self.eigenvalues_kpoints = [] 
         self.eigenvalues_occupation.append(occs)
-        self.eigenvalues_eigenvalues.append(evs)
+        self.eigenvalues_values.append(evs)
 
 
                 
@@ -175,7 +175,7 @@ def build_Dmol3MainFileSimpleMatcher():
        #     ]),
         SM (startReStr = r"\s*\$coordinates",
             subMatchers = [
-            SM (r"\s*(?P<dmol3_geometry_atom_label>[a-zA-Z]+)\s+(?P<dmol3_geometry_atom_position_x__bohr>[-+0-9.]+)\s+(?P<dmol3_geometry_atom_position_y__bohr>[-+0-9.]+)\s+(?P<dmol3_geometry_atom_position_z__bohr>[-+0-9.]+)", repeats = True)
+            SM (r"\s*(?P<dmol3_geometry_atom_labels>[a-zA-Z]+)\s+(?P<dmol3_geometry_atom_positions_x__bohr>[-+0-9.]+)\s+(?P<dmol3_geometry_atom_positions_y__bohr>[-+0-9.]+)\s+(?P<dmol3_geometry_atom_positions_z__bohr>[-+0-9.]+)", repeats = True)
             ])
         ])
 
@@ -278,7 +278,7 @@ def build_Dmol3MainFileSimpleMatcher():
         subMatchers = [
         SM (startReStr = r"\s*df\s+x\s+y\s+z\s+x\s+y\s+z",
             subMatchers = [
-            SM (r"\s*df\s+(?P<dmol3_geometry_atom_label>[a-zA-Z]+)\s+(?P<dmol3_geometry_atom_position_x__angstrom>[-+0-9.]+)\s+(?P<dmol3_geometry_atom_position_y__angstrom>[-+0-9.]+)\s+(?P<dmol3_geometry_atom_position_z__angstrom>[-+0-9.]+)\s+[-+0-9.]+\s+[-+0-9.]+\s+[-+0-9.]+", repeats = True)
+            SM (r"\s*df\s+(?P<dmol3_geometry_atom_labels>[a-zA-Z]+)\s+(?P<dmol3_geometry_atom_positions_x__angstrom>[-+0-9.]+)\s+(?P<dmol3_geometry_atom_positions_y__angstrom>[-+0-9.]+)\s+(?P<dmol3_geometry_atom_positions_z__angstrom>[-+0-9.]+)\s+[-+0-9.]+\s+[-+0-9.]+\s+[-+0-9.]+", repeats = True)
             ])
         ])
 
@@ -367,7 +367,7 @@ def get_cachingLevelForMetaName(metaInfoEnv):
     """
     # manually adjust caching of metadata
     cachingLevelForMetaName = {
-                                'eigenvalues_eigenvalues': CachingLevel.Cache,
+                                'eigenvalues_values': CachingLevel.Cache,
                                 'eigenvalues_kpoints':CachingLevel.Cache
                                 }
 
