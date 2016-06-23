@@ -24,7 +24,7 @@ object Dmol3Parser extends SimpleExternalParserGenerator(
   mainFileRe = """\s*============================================*\s*
 \s*Materials Studio DMol\^3 version (?<version>[-0-9.a-zA-Z_]+)\s*
 """.r,
-  cmd = Seq(DefaultPythonInterpreter.python2Exe(), "${envDir}/parsers/dmol3/parser/parser-dmol3/Dmol3Parser.py",
+  cmd = Seq(DefaultPythonInterpreter.pythonExe(), "${envDir}/parsers/dmol3/parser/parser-dmol3/Dmol3Parser.py",
     "--uri", "${mainFileUri}", "${mainFilePath}"),
   resList = Seq(
     "parser-dmol3/Dmol3Parser.py",
