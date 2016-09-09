@@ -27,8 +27,13 @@ class Dmol3ParserContext(object):
         """Initializes the values of certain variables.
 
         This allows a consistent setting and resetting of the variables,
-        when the parsing starts and when a section_run closes.
-        """
+        when the parsing starts and when a section_run closes. 
+       """
+        self.secMethodIndex = None
+        self.secSystemDescriptionIndex = None
+
+        self.singleConfCalcs = []
+
 
     def startedParsing(self, fInName, parser):
         """Function is called when the parsing starts.
@@ -45,6 +50,33 @@ class Dmol3ParserContext(object):
         self.metaInfoEnv = self.parser.parserBuilder.metaInfoEnv
         # allows to reset values if the same superContext is used to parse different files
         self.initialize_values()
+
+    def onClose_section_run(self, backend, gIndex, section):
+        """Trigger called when section_run is closed.
+        """
+        # reset all variables
+        self.initialize_values()
+        # frame sequence
+        sampling_method = "geometry_optimization"
+
+        samplingGIndex = backend.openSection("section_sampling_method")
+        backend.addValue("sampling_method", sampling_method)
+        backend.closeSection("section_sampling_method", samplingGIndex)
+        frameSequenceGIndex = backend.openSection("section_frame_sequence")
+        backend.addValue("frame_sequence_to_sampling_ref", samplingGIndex)
+        backend.addArrayValues("frame_sequence_local_frames_ref", np.asarray(self.singleConfCalcs))
+        backend.closeSection("section_frame_sequence", frameSequenceGIndex)
+
+
+
+    def onOpen_section_method(self, backend, gIndex, section):
+        # keep track of the latest method section
+        self.secMethodIndex = gIndex
+
+
+    def onOpen_section_system(self, backend, gIndex, section):
+        # keep track of the latest system description section
+        self.secSystemDescriptionIndex = gIndex
 
 
 
@@ -70,11 +102,24 @@ class Dmol3ParserContext(object):
         atom_labels = section['dmol3_geometry_atom_labels']
         if atom_labels is not None:
            backend.addArrayValues('atom_labels', np.asarray(atom_labels))
+
+        backend.addArrayValues("configuration_periodic_dimensions", np.ones(3, dtype=bool))
  
         #atom_hirshfeld_population_analysis = section['dmol3_hirshfeld_population']        
         #if atom_hirshfeld_population_analysis is not None:
         #   backend.addArrayValues('atom_hirshfeld_population',np.asarray(atom_hirshfeld_population_analysis))
         ###---???shanghui want to know how to add 
+
+    def onOpen_section_single_configuration_calculation(self, backend, gIndex, section):
+        self.singleConfCalcs.append(gIndex)
+
+    def onClose_section_single_configuration_calculation(self, backend, gIndex, section):
+# write the references to section_method and section_system
+        backend.addValue('single_configuration_to_calculation_method_ref', self.secMethodIndex)
+        backend.addValue('single_configuration_calculation_to_system_ref', self.secSystemDescriptionIndex)
+
+
+
 
     #################################################################
     # (2.2) onClose for INPUT control (section_method)
@@ -318,6 +363,7 @@ def build_Dmol3MainFileSimpleMatcher():
             repeats = True,
             required = True,
             forwardMatch = True,
+            fixedStartValues={'program_name': 'dmol3', 'program_basis_set_type': 'numeric AOs'},
             sections = ['section_run'],
             subMatchers = [
 
