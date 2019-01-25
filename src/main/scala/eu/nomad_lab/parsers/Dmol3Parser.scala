@@ -48,7 +48,7 @@ object Dmol3Parser extends SimpleExternalParserGenerator(
     "parser-dmol3/setup_paths.py",
     "nomad_meta_info/public.nomadmetainfo.json",
     "nomad_meta_info/common.nomadmetainfo.json",
-    "nomad_meta_info/meta_types.nomadmetainfo.json",
+    "nomad_meta_info/meta.nomadmetainfo.json",
     "nomad_meta_info/dmol3.nomadmetainfo.json"
   ) ++ DefaultPythonInterpreter.commonFiles(),
   dirMap = Map(
