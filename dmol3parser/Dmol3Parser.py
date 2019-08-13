@@ -1,11 +1,11 @@
 # Copyright 2016-2018 Fawzi Mohamed, Honghui Shang, Ankit Kariryaa
-# 
+#
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
 #   You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 #   Unless required by applicable law or agreed to in writing, software
 #   distributed under the License is distributed on an "AS IS" BASIS,
 #   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -13,14 +13,16 @@
 #   limitations under the License.
 
 from builtins import object
-import setup_paths
 import numpy as np
+import logging, os, re, sys
+
 import nomadcore.ActivateLogging
 from nomadcore.caching_backend import CachingLevel
 from nomadcore.simple_parser import AncillaryParser, mainFunction
 from nomadcore.simple_parser import SimpleMatcher as SM
-from Dmol3Common import get_metaInfo
-import logging, os, re, sys
+import nomad_meta_info
+
+from .Dmol3Common import get_metaInfo
 
 ############################################################
 # This is the parser for the main file of dmol3.
@@ -30,7 +32,7 @@ import logging, os, re, sys
 ############################################################
 ###############[1] transfer PARSER CONTEXT #################
 ############################################################
-logger = logging.getLogger("nomad.dmol3Parser") 
+logger = logging.getLogger("nomad.dmol3Parser")
 
 class Dmol3ParserContext(object):
 
@@ -41,7 +43,7 @@ class Dmol3ParserContext(object):
         """Initializes the values of certain variables.
 
         This allows a consistent setting and resetting of the variables,
-        when the parsing starts and when a section_run closes. 
+        when the parsing starts and when a section_run closes.
        """
         self.secMethodIndex = None
         self.secSystemDescriptionIndex = None
@@ -118,11 +120,11 @@ class Dmol3ParserContext(object):
            backend.addArrayValues('atom_labels', np.asarray(atom_labels))
 
         backend.addArrayValues("configuration_periodic_dimensions", np.ones(3, dtype=bool))
- 
-        #atom_hirshfeld_population_analysis = section['dmol3_hirshfeld_population']        
+
+        #atom_hirshfeld_population_analysis = section['dmol3_hirshfeld_population']
         #if atom_hirshfeld_population_analysis is not None:
         #   backend.addArrayValues('atom_hirshfeld_population',np.asarray(atom_hirshfeld_population_analysis))
-        ###---???shanghui want to know how to add 
+        ###---???shanghui want to know how to add
 
     def onOpen_section_single_configuration_calculation(self, backend, gIndex, section):
         self.singleConfCalcs.append(gIndex)
@@ -155,7 +157,7 @@ class Dmol3ParserContext(object):
 
 
     # #################################################################
-    # # (3.1) onClose for OUTPUT SCF (section_scf_iteration) 
+    # # (3.1) onClose for OUTPUT SCF (section_scf_iteration)
     # #################################################################
     # # Storing the total energy of each SCF iteration in an array
     # def onClose_section_scf_iteration(self, backend, gIndex, section):
@@ -163,15 +165,15 @@ class Dmol3ParserContext(object):
     #     # get cached values for energy_total_scf_iteration
     #     ev = section['energy_total_scf_iteration']
     #     self.scfIterNr = len(ev)
-    # 
+    #
     #     #self.energy_total_scf_iteration_list.append(ev)
     #     #backend.addArrayValues('energy_total_scf_iteration_list', np.asarray(ev))
     #     #backend.addValue('number_of_scf_iterations', self.scfIterNr)
     #     #-----???shanghui want to know why can not add them.
- 
+
 
     #################################################################
-    # (3.2) onClose for OUTPUT eigenvalues (section_eigenvalues) 
+    # (3.2) onClose for OUTPUT eigenvalues (section_eigenvalues)
     #################################################################
     def onClose_section_eigenvalues(self, backend, gIndex, section):
         """Trigger called when _section_eigenvalues is closed.
@@ -181,20 +183,20 @@ class Dmol3ParserContext(object):
         evs =  []
 
         ev = section['dmol3_eigenvalue_eigenvalue']
-        if ev is not None: 
+        if ev is not None:
            occ = section['dmol3_eigenvalue_occupation']
-           occs.append(occ) 
+           occs.append(occ)
            evs.append(ev)
 
         self.eigenvalues_occupation = []
         self.eigenvalues_values = []
 
-        #self.eigenvalues_kpoints = [] 
+        #self.eigenvalues_kpoints = []
         self.eigenvalues_occupation.append(occs)
         self.eigenvalues_values.append(evs)
 
 
-                
+
 
 #############################################################
 #################[2] MAIN PARSER STARTS HERE  ###############
@@ -209,7 +211,7 @@ def build_Dmol3MainFileSimpleMatcher():
     which allows nice formating of nested SimpleMatchers in python.
 
     Returns:
-       SimpleMatcher that parses main file of dmol3. 
+       SimpleMatcher that parses main file of dmol3.
     """
 
 
@@ -292,7 +294,7 @@ def build_Dmol3MainFileSimpleMatcher():
             SM(r"\s*OPT_Hessian_Project\s+(?P<dmol3_opt_hessian_project>[A-Za-z]+)")
 
 
-        ]) 
+        ])
 
     ####################################################################
     # (3.1) submatcher for OUPUT SCF
@@ -305,8 +307,8 @@ def build_Dmol3MainFileSimpleMatcher():
                sections = ['section_scf_iteration'],
                repeats = True)
 
-        ]) 
-      
+        ])
+
     ####################################################################
     # (3.2) submatcher for OUPUT eigenvalues
     ####################################################################
@@ -315,7 +317,7 @@ def build_Dmol3MainFileSimpleMatcher():
         sections = ['section_eigenvalues'],
         subMatchers = [
             SM(r"\s*[0-9]+\s+[+-]\s+[0-9]+\s+[A-Za-z]+\s+[-+0-9.eEdD]+\s+(?P<dmol3_eigenvalue_eigenvalue__eV>[-+0-9.eEdD]+)\s+(?P<dmol3_eigenvalue_occupation>[0-9.eEdD]+)", repeats = True)
-        ]) 
+        ])
 
 
     ####################################################################
@@ -325,8 +327,8 @@ def build_Dmol3MainFileSimpleMatcher():
         startReStr = r"\s*Optimization Cycle",
         subMatchers = [
             SM(r"\s*opt==\s+[0-9]+\s+(?P<energy_total__hartree>[-+0-9.eEdD]+)\s+[-+0-9.eEdD]+\s+[-+0-9.eEdD]+\s+[-+0-9.eEdD]+", repeats = True)
-        ]) 
-    
+        ])
+
 
     #####################################################################
     # (3.4) submatcher for OUTPUT relaxation_geometry(section_system)
@@ -381,14 +383,14 @@ def build_Dmol3MainFileSimpleMatcher():
             sections = ['section_run'],
             subMatchers = [
 
-             #-----------(1) header--------------------- 
+             #-----------(1) header---------------------
              headerSubMatcher,
 
 
              #----------(2.1) INPUT : geometry----------
-             geometrySubMatcher,  
+             geometrySubMatcher,
              #----------(2.2) INPUT : control-----------
-             calculationMethodSubMatcher,  
+             calculationMethodSubMatcher,
 
              SM(name = "single configuration matcher",
                 startReStr = r"\s*~~~~~~~~*\s*Start Computing SCF Energy/Gradient\s*~~~~~~~~~~*",
@@ -401,10 +403,10 @@ def build_Dmol3MainFileSimpleMatcher():
                     #----------(3.2) OUTPUT : eigenvalues--------------
                     eigenvalueSubMatcher,
                     #----------(3.4) OUTPUT : relaxation_geometry----------------------
-                    geometryrelaxationSubMatcher, 
+                    geometryrelaxationSubMatcher,
                     ###---???shanghui find this will mismacth the frequencies geometry.
                     #----------(3.3) OUTPUT : totalenergy--------------
-                    totalenergySubMatcher,       
+                    totalenergySubMatcher,
                     #----------(3.5) OUTPUT : population_analysis----------------------
                     populationSubMatcher
                     ]
@@ -413,7 +415,7 @@ def build_Dmol3MainFileSimpleMatcher():
 
                     #----------(3.6) OUTPUT : frequencies----------------------
 
-           ]) # CLOSING SM NewRun  
+           ]) # CLOSING SM NewRun
 
         ]) # END Root
 
@@ -424,7 +426,7 @@ def get_cachingLevelForMetaName(metaInfoEnv):
         metaInfoEnv: metadata which is an object of the class InfoKindEnv in nomadcore.local_meta_info.py.
 
     Returns:
-        Dictionary with metaname as key and caching level as value. 
+        Dictionary with metaname as key and caching level as value.
     """
     # manually adjust caching of metadata
     cachingLevelForMetaName = {
@@ -440,29 +442,41 @@ def get_cachingLevelForMetaName(metaInfoEnv):
     return cachingLevelForMetaName
 
 
+# get main file description
+Dmol3MainFileSimpleMatcher = build_Dmol3MainFileSimpleMatcher()
+# loading metadata from nomad-meta-info/meta_info/nomad_meta_info/dmol3.nomadmetainfo.json
+metaInfoPath = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(nomad_meta_info.__file__)), "dmol3.nomadmetainfo.json"))
+metaInfoEnv = get_metaInfo(metaInfoPath)
+# set parser info
+parserInfo = {'name':'dmol3-parser', 'version': '1.0'}
+# get caching level for metadata
+cachingLevelForMetaName = get_cachingLevelForMetaName(metaInfoEnv)
 
 
-def main():
-    """Main function.
+class Dmol3Parser():
+    """ A proper class envolop for running this parser from within python. """
+    def __init__(self, backend, **kwargs):
+        self.backend_factory = backend
 
-    Set up everything for the parsing of the dmol3 main file and run the parsing.
-    """
-    # get main file description
-    Dmol3MainFileSimpleMatcher = build_Dmol3MainFileSimpleMatcher()
-    # loading metadata from nomad-meta-info/meta_info/nomad_meta_info/dmol3.nomadmetainfo.json
-    metaInfoPath = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "../../../../nomad-meta-info/meta_info/nomad_meta_info/dmol3.nomadmetainfo.json"))
-    metaInfoEnv = get_metaInfo(metaInfoPath)
-    # set parser info
-    parserInfo = {'name':'dmol3-parser', 'version': '1.0'}
-    # get caching level for metadata
-    cachingLevelForMetaName = get_cachingLevelForMetaName(metaInfoEnv)
-    # start parsing
+    def parse(self, mainfile):
+        from unittest.mock import patch
+        logging.debug('dmol3 parser started')
+        logging.getLogger('nomadcore').setLevel(logging.WARNING)
+        backend = self.backend_factory(metaInfoEnv)
+        with patch.object(sys, 'argv', ['<exe>', '--uri', 'nmd://uri', mainfile]):
+            mainFunction(mainFileDescription=Dmol3MainFileSimpleMatcher,
+                metaInfoEnv=metaInfoEnv,
+                parserInfo=parserInfo,
+                cachingLevelForMetaName=cachingLevelForMetaName,
+                superContext=Dmol3ParserContext(),
+                superBackend=backend)
+
+        return backend
+
+
+if __name__ == "__main__":
     mainFunction(mainFileDescription = Dmol3MainFileSimpleMatcher,
                  metaInfoEnv = metaInfoEnv,
                  parserInfo = parserInfo,
                  cachingLevelForMetaName = cachingLevelForMetaName,
                  superContext = Dmol3ParserContext())
-
-if __name__ == "__main__":
-    main()
-
