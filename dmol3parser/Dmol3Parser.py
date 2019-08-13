@@ -379,7 +379,7 @@ def build_Dmol3MainFileSimpleMatcher():
             repeats = True,
             required = True,
             forwardMatch = True,
-            fixedStartValues={'program_name': 'dmol3', 'program_basis_set_type': 'numeric AOs'},
+            fixedStartValues={'program_name': 'DMol3', 'program_basis_set_type': 'numeric AOs'},
             sections = ['section_run'],
             subMatchers = [
 
