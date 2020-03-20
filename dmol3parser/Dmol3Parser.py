@@ -14,15 +14,13 @@
 
 from builtins import object
 import numpy as np
-import logging, os, re, sys
+import logging
+import sys
 
-import nomadcore.ActivateLogging
 from nomadcore.caching_backend import CachingLevel
-from nomadcore.simple_parser import AncillaryParser, mainFunction
+from nomadcore.simple_parser import mainFunction
 from nomadcore.simple_parser import SimpleMatcher as SM
-import nomad_meta_info
 
-from .Dmol3Common import get_metaInfo
 
 ############################################################
 # This is the parser for the main file of dmol3.
@@ -444,13 +442,6 @@ def get_cachingLevelForMetaName(metaInfoEnv):
 
 # get main file description
 Dmol3MainFileSimpleMatcher = build_Dmol3MainFileSimpleMatcher()
-# loading metadata from nomad-meta-info/meta_info/nomad_meta_info/dmol3.nomadmetainfo.json
-metaInfoPath = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(nomad_meta_info.__file__)), "dmol3.nomadmetainfo.json"))
-metaInfoEnv = get_metaInfo(metaInfoPath)
-# set parser info
-parserInfo = {'name':'dmol3-parser', 'version': '1.0'}
-# get caching level for metadata
-cachingLevelForMetaName = get_cachingLevelForMetaName(metaInfoEnv)
 
 
 class Dmol3Parser():
@@ -462,21 +453,14 @@ class Dmol3Parser():
         from unittest.mock import patch
         logging.debug('dmol3 parser started')
         logging.getLogger('nomadcore').setLevel(logging.WARNING)
-        backend = self.backend_factory(metaInfoEnv)
+        backend = self.backend_factory("dmol3.nomadmetainfo.json")
         with patch.object(sys, 'argv', ['<exe>', '--uri', 'nmd://uri', mainfile]):
-            mainFunction(mainFileDescription=Dmol3MainFileSimpleMatcher,
-                metaInfoEnv=metaInfoEnv,
-                parserInfo=parserInfo,
-                cachingLevelForMetaName=cachingLevelForMetaName,
+            mainFunction(
+                mainFileDescription=Dmol3MainFileSimpleMatcher,
+                metaInfoEnv=None,
+                parserInfo={'name':'dmol3-parser', 'version': '1.0'},
+                cachingLevelForMetaName=get_cachingLevelForMetaName(backend.metaInfoEnv()),
                 superContext=Dmol3ParserContext(),
                 superBackend=backend)
 
         return backend
-
-
-if __name__ == "__main__":
-    mainFunction(mainFileDescription = Dmol3MainFileSimpleMatcher,
-                 metaInfoEnv = metaInfoEnv,
-                 parserInfo = parserInfo,
-                 cachingLevelForMetaName = cachingLevelForMetaName,
-                 superContext = Dmol3ParserContext())
