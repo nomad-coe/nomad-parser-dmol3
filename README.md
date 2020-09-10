@@ -1,39 +1,78 @@
-# dmol3 Parser
-This is the parser for [dmol3](http://dmol3.web.psi.ch).
-It is part of the [NOMAD Laboratory](http://nomad-lab.eu).
-The official version lives at:
+This is a NOMAD parser for [DMol3 ](http://dmol3.web.psi.ch/). It will read DMol3  input and
+output files and provide all information in NOMAD's unified Metainfo based Archive format.
 
-    git@gitlab.mpcdf.mpg.de:nomad-lab/parser-dmol3.git
+## Preparing code input and output file for uploading to NOMAD
 
-You can browse it at:
+NOMAD accepts `.zip` and `.tar.gz` archives as uploads. Each upload can contain arbitrary
+files and directories. NOMAD will automatically try to choose the right parser for you files.
+For each parser (i.e. for each supported code) there is one type of file that the respective
+parser can recognize. We call these files `mainfiles` as they typically are the main
+output file a code. For each `mainfile` that NOMAD discovers it will create an entry
+in the database that users can search, view, and download. NOMAD will associate all files
+in the same directory as files that also belong to that entry. Parsers
+might also read information from these auxillary files. This way you can add more files
+to an entry, even if the respective parser/code might not directly support it.
 
-    https://gitlab.rzg.mpg.de/nomad-lab/parser-dmol3
+For dmol3 please provide at least the files from this table if applicable to your
+calculations (remember that you can provide more files if you want):
 
-It relies on having the nomad-meta-info and the python-common repositories one level higher.
-The simplest way to have this is to check out nomad-lab-base recursively:
 
-    git clone --recursive git@gitlab.mpcdf.mpg.de:nomad-lab/nomad-lab-base.git
 
-This parser will be in the directory parsers/dmol3 of this repository.
+To create an upload with all calculations in a directory structure:
 
-# Running and Testing the Parser
-## Requirements
-The required python packages can be installed with (see [python-common](https://gitlab.rzg.mpg.de/nomad-lab/python-common)):
+```
+zip -r <upload-file>.zip <directory>/*
+```
 
-    pip install -r nomad-lab-base/python-common/requirements.txt
+Go to the [NOMAD upload page](https://nomad-lab.eu/prod/rae/gui/uploads) to upload files
+or find instructions about how to upload files from the command line.
 
-## Usage
-dmol3 output files can be parsed with:
+## Using the parser
 
-    python Dmol3Parser.py [path/toFile]
+You can use NOMAD's parsers and normalizers locally on your computer. You need to install
+NOMAD's pypi package:
 
-Yon can accessed the help for the available command line arguments with:
+```
+pip install nomad-lab
+```
 
-    python Dmol3Parser.py --help
+To parse code input/output from the command line, you can use NOMAD's command line
+interface (CLI) and print the processing results output to stdout:
 
-## Test Files
-Example output files of dmol3 can be found in the directory test/examples.
-More details about the calculations and files are explained in a README in this directory.
+```
+nomad parse --show-archive <path-to-file>
+```
 
-# Documentation of Code
-The [google style guide](https://google.github.io/styleguide/pyguide.html?showone=Comments#Comments) provides a good template on how the code should be documented. This makes it easier to follow the logic of the parser.
+To parse a file in Python, you can program something like this:
+```python
+import sys
+from nomad.cli.parse import parse, normalize_all
+
+# match and run the parser
+backend = parse(sys.argv[1])
+# run all normalizers
+normalize_all(backend)
+
+# get the 'main section' section_run as a metainfo object
+section_run = backend.resource.contents[0].section_run[0]
+
+# get the same data as JSON serializable Python dict
+python_dict = section_run.m_to_dict()
+```
+
+## Developing the parser
+
+Also install NOMAD's pypi package:
+
+```
+pip install nomad-lab
+```
+
+Clone the parser project and install it in development mode:
+
+```
+git clone https://gitlab.mpcdf.mpg.de/nomad-lab/parser-dmol3 parser-dmol3
+pip install -e parser-dmol3
+```
+
+Running the parser now, will use the parser's Python code from the clone project.
