@@ -1,7 +1,0 @@
-code-label: 'DMol3 '
-code-label-style: 'Capitals: D, M'
-code-url: http://dmol3.web.psi.ch/
-parser-dir-name: dependencies/parsers/dmol3/
-parser-git-url: https://gitlab.mpcdf.mpg.de/nomad-lab/parser-dmol3
-parser-specific: ''
-table-of-files: ''
