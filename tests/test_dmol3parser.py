@@ -37,13 +37,13 @@ def test_basic(parser):
 
     parser.parse('tests/data/h2o.outmol', archive, None)
 
-    sec_run = archive.section_run[0]
-    assert sec_run.program_version == 'version 3.0'
+    sec_run = archive.run[0]
+    assert sec_run.program.version == 'version 3.0'
 
-    sec_systems = archive.section_run[0].section_system
+    sec_systems = archive.run[0].system
     assert len(sec_systems) == 11
-    assert sec_systems[0].atom_labels[2] == 'H'
-    assert sec_systems[2].atom_positions[1][2].magnitude == approx(-8.84266338e-10,)
+    assert sec_systems[0].atoms.labels[2] == 'H'
+    assert sec_systems[2].atoms.positions[1][2].magnitude == approx(-8.84266338e-10,)
 
-    sec_sccs = sec_run.section_single_configuration_calculation
-    assert sec_sccs[7].energy_total.magnitude == approx(-3.33238073e-16)
+    sec_sccs = sec_run.calculation
+    assert sec_sccs[7].energy.total.value.magnitude == approx(-3.33238073e-16)
