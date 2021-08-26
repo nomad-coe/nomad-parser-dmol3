@@ -16,4 +16,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-import dmol3parser.metainfo.dmol3
+from nomad.metainfo import Environment
+
+from . import dmol3
+
+m_env = Environment()
+m_env.m_add_sub_section(Environment.packages, dmol3.m_package)

@@ -25,6 +25,9 @@ from nomad.metainfo import (  # pylint: disable=unused-import
 from nomad.datamodel.metainfo import run
 
 
+m_package = Package()
+
+
 class dmol3_section_hirshfeld_population(MSection):
     '''
     Hirshfeld Population Analysis Section
