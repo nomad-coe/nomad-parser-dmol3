@@ -22,7 +22,7 @@ from nomad.metainfo import (  # pylint: disable=unused-import
     MSection, MCategory, Category, Package, Quantity, Section, SubSection, SectionProxy,
     Reference
 )
-from nomad.datamodel.metainfo import run
+from nomad.datamodel.metainfo import simulation
 
 
 m_package = Package()
@@ -58,7 +58,7 @@ class dmol3_section_mulliken_population(MSection):
         ''')
 
 
-class Method(run.method.Method):
+class Method(simulation.method.Method):
 
     m_def = Section(validate=False, extends_base_section=True)
 
@@ -336,7 +336,7 @@ class Method(run.method.Method):
         ''')
 
 
-class ScfIteration(run.calculation.ScfIteration):
+class ScfIteration(simulation.calculation.ScfIteration):
 
     m_def = Section(validate=False, extends_base_section=True)
 
@@ -370,7 +370,7 @@ class ScfIteration(run.calculation.ScfIteration):
         ''')
 
 
-class BandEnergies(run.calculation.BandEnergies):
+class BandEnergies(simulation.calculation.BandEnergies):
 
     m_def = Section(validate=False, extends_base_section=True)
 
@@ -390,7 +390,7 @@ class BandEnergies(run.calculation.BandEnergies):
         ''')
 
 
-class System(run.system.System):
+class System(simulation.system.System):
 
     m_def = Section(validate=False, extends_base_section=True)
 
@@ -426,7 +426,7 @@ class System(run.system.System):
         ''')
 
 
-class Run(run.run.Run):
+class Run(simulation.run.Run):
 
     m_def = Section(validate=False, extends_base_section=True)
 
@@ -445,7 +445,7 @@ class Run(run.run.Run):
         ''')
 
 
-class Calculation(run.calculation.Calculation):
+class Calculation(simulation.calculation.Calculation):
 
     m_def = Section(validate=False, extends_base_section=True)
 
